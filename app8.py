@@ -28,10 +28,6 @@ tobs = session.query(*tobsselect).filter(Measurement.date > '2016-08-23').\
     order_by(Measurement.date).all()
 tobs_dict = dict(tobs)
 
-def start_temps(start_date):
-    return session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
-    filter(Measurement.date >= start_date).all()
-
 @app.route("/")
 def home():
     return (
@@ -58,29 +54,49 @@ def tobs():
 
 @app.route("/api/v1.0/<start>")
 def start(start):
-    # for r in (("-", ""), (" ", "")):
-    #     start = start.replace(*r)
+    engine = create_engine("sqlite:///hawaii.sqlite")
+    Base = automap_base()
+    Base.prepare(engine, reflect=True)
+    Measurement = Base.classes.measurement
+    Station = Base.classes.station
+    session = Session(engine)
 
-    # def calc_temps(start_date):
-    #     return session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
-    #     filter(Measurement.date >= start_date).all()
+    def calc_temps(start_date):
+        return session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+        filter(Measurement.date >= start_date).all()
 
-    # return(calc_temps(start))
-    start_dict = dict(zip(start, [start_temps(start)]))
-    return jsonify(start_dict)
+    empty_dict = {'min_temp' : [],"average_temp" : [],"max_temp" : []}
+
+    strtdate = [start]
+
+    for rng in strtdate:
+        temp_loop = calc_temps(rng)
+    
+        empty_dict['min_temp'].append(temp_loop[0][0])
+        empty_dict['average_temp'].append(temp_loop[0][1])
+        empty_dict['max_temp'].append(temp_loop[0][2])  
+
+    return jsonify(empty_dict)
 
 @app.route("/api/v1.0/<start>/<end>")
-def end(end):
-    # for r in (("-", ""), (" ", "")):
-    # start = start.replace(*r)
+def startend(start=None, end=None):
+    engine = create_engine("sqlite:///hawaii.sqlite")
+    Base = automap_base()
+    Base.prepare(engine, reflect=True)
+    Measurement = Base.classes.measurement
+    Station = Base.classes.station
+    session = Session(engine)
 
-    def range_temps(start_date, end_date):
-        return session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
-        filter(Measurement.date >= start_date).filter(Measurement.date <= end_date).all()
-    
-    range_dict = dict(zip(start, [range_temps(start,end)]))
-    return jsonify(range_dict)
+    ranges = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+    filter(Measurement.date >= start).filter(Measurement.date <= end).all()
+ 
+    rng_dict = {'min_temp' : [],"average_temp" : [],"max_temp" : []}
+
+    rng_dict['min_temp'].append(ranges[0][0])
+    rng_dict['average_temp'].append(ranges[0][1])
+    rng_dict['max_temp'].append(ranges[0][2]) 
+
+    return jsonify(rng_dict)
 
 if __name__ == "__main__":
     app.run(debug=True, port=5008)
-
